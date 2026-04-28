@@ -1,0 +1,55 @@
+/* src/pages/Songs.css */
+
+.songs-page {}
+
+.songs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.songs-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.songs-search {
+  padding-left: 2.4rem;
+  width: 260px;
+}
+
+.songs-chips {
+  margin-bottom: var(--spacing-md);
+}
+
+.songs-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-md);
+}
+
+.songs-list-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll-sentinel {
+  height: 20px;
+}
+
+.error-text {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin-bottom: var(--spacing-md);
+}

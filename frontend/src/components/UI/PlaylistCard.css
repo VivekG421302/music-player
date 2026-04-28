@@ -1,0 +1,39 @@
+/* src/components/UI/PlaylistCard.css */
+
+.playlist-card {
+  width: 160px;
+  flex-shrink: 0;
+  padding: var(--spacing-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.playlist-card-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-xs);
+  font-size: 2rem;
+}
+
+.playlist-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.playlist-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-card-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

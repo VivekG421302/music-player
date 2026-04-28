@@ -1,0 +1,48 @@
+Act as a Senior Full-Stack Web Developer. Build a Personal Music Player Suite consisting of a React Frontend (Vite) and a Node.js Backend (Express). 
+
+### GENERAL ARCHITECTURE
+- Frontend: React + Vite, plain JavaScript, pure CSS (No TypeScript, No Tailwind).
+- Backend: Node.js + Express (to be deployed on Render).
+- Database: MongoDB/Mongoose (to store metadata).
+- Deployment: Frontend on Vercel, Backend on Render.
+
+### FRONTEND REQUIREMENTS (Vite + JS + CSS)
+- Themes: Dark-mode focused. Include a Theme Engine in 'Profile' where users pick a custom accent color (updates --primary-color CSS variable).
+- State Management: React Context for global Audio handling (music must play uninterrupted during navigation).
+- Performance: Use Intersection Observer for scroll-based pagination. Implement a caching layer where songs are loaded into SessionStorage/Blobs to prevent playback lag.
+- Centralized API: All calls must live in 'src/services/api.js' using a VITE_API_URL environment variable.
+
+### 5-PAGE STRUCTURE
+1. Home: Horizontal scroll for Playlists, a grid for "All Songs," and a "Recently Played" (last 20) section.
+2. Songs: List view with a 3-chip toggle: [All, Recently Added (Default), Recently Played].
+3. Player: Spotify-style UI. 
+   - Main Visual: Large rotating Vinyl Record animation for cover art.
+   - Controls: Progress slider, Play/Pause, Next/Prev.
+   - Mixer: Shuffle, Sequence, Revolve (loop all), Repeat (loop one).
+   - Queue: List of previous and upcoming songs.
+4. Playlist: Create/Delete playlists. Options to add existing songs via selection or bulk upload new files.
+5. Profile/Settings: Theme color picker, storage usage stats, and "About" section.
+
+### BACKEND & DATA LOGIC (Node.js for Render)
+- API Routes:
+  - GET /songs: Returns paginated songs.
+  - POST /upload: Handles multiple file uploads (Multer).
+  - POST/GET /playlists: CRUD operations for playlists.
+- Automatic Logic:
+  - Auto-Album Creation: When a song is uploaded, the backend must group it into an "Album" based on the 'Artist' string.
+  - Storage: Store files in a local './uploads' folder for now (prepare the logic to be swapped for Telegram API later).
+- Models (Mongoose):
+  - Song: { title, artist, album (auto-assigned), fileUrl, duration, coverArt, createdAt }
+  - Playlist: { name, description, songIds: [] }
+
+### TECHNICAL CONSTRAINTS
+- Files must be easy to read and documented.
+- Use standard CSS Flexbox/Grid for layouts.
+- Ensure CORS is configured so the Vercel frontend can communicate with the Render backend.
+- The 'Recently Played' logic should be handled via a 'recents' array in the DB or LocalStorage.
+
+### OUTPUT EXPECTED:
+1. Complete folder structure for /frontend and /backend.
+2. The Express server code (index.js) and Mongoose models.
+3. The React App components, Context Providers, and CSS files.
+4. A README with instructions on environment variables for Vercel and Render.

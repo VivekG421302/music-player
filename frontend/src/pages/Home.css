@@ -1,0 +1,34 @@
+/* src/pages/Home.css */
+
+.home-page {}
+
+.home-greeting {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.home-greeting h1 {
+  margin-bottom: var(--spacing-xs);
+}
+
+.home-greeting p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.accent-text {
+  color: var(--primary-color);
+}
+
+.home-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.songs-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll-sentinel {
+  height: 20px;
+  width: 100%;
+}
