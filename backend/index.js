@@ -99,3 +99,25 @@ mongoose
     console.error("[DB] Connection error:", err.message);
     process.exit(1);
   });
+
+  /* ──────────────────── Start Server & MongoDB ───────────────────── */
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// 1. Start the server immediately so Render's health check passes
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[SERVER] Running on port ${PORT}`);
+  
+  // 2. Connect to MongoDB after the server is up
+  if (!MONGODB_URI) {
+    console.error("[DB] Error: MONGODB_URI is not defined in environment variables.");
+  } else {
+    mongoose
+      .connect(MONGODB_URI)
+      .then(() => console.log("[DB] Connected to MongoDB"))
+      .catch((err) => {
+        console.error("[DB] Connection error:", err.message);
+        // Do not use process.exit(1) here on Render; let the server stay up
+        // so you can see the logs and troubleshoot.
+      });
+  }
+});
