@@ -15,12 +15,13 @@ const Playlist = require("../models/Playlist");
 const Song = require("../models/Song");
 
 const router = express.Router();
+const SONG_FIELDS = "title artist album duration coverArt telegramFileId telegramFilePath mimeType";
 
 /* ─────────────── GET /playlists (all) ─────────────────────── */
 router.get("/", async (_req, res) => {
   try {
     const playlists = await Playlist.find()
-      .populate("songIds", "title artist album duration coverArt fileUrl")
+      .populate("songIds", SONG_FIELDS)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -53,7 +54,7 @@ router.post("/", async (req, res) => {
     });
 
     await playlist.save();
-    await playlist.populate("songIds", "title artist album duration coverArt fileUrl");
+    await playlist.populate("songIds", SONG_FIELDS);
 
     res.status(201).json(playlist);
   } catch (err) {
@@ -65,7 +66,7 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id)
-      .populate("songIds", "title artist album duration coverArt fileUrl mimeType")
+      .populate("songIds", SONG_FIELDS)
       .lean();
 
     if (!playlist) return res.status(404).json({ error: "Playlist not found" });
@@ -85,7 +86,7 @@ router.put("/:id", async (req, res) => {
     if (coverArt !== undefined) updates.coverArt = coverArt;
 
     const playlist = await Playlist.findByIdAndUpdate(req.params.id, updates, { new: true })
-      .populate("songIds", "title artist album duration coverArt fileUrl");
+      .populate("songIds", SONG_FIELDS);
 
     if (!playlist) return res.status(404).json({ error: "Playlist not found" });
     res.json(playlist);
@@ -107,7 +108,7 @@ router.post("/:id/songs", async (req, res) => {
       req.params.id,
       { $addToSet: { songIds: { $each: songIds } } },
       { new: true }
-    ).populate("songIds", "title artist album duration coverArt fileUrl");
+    ).populate("songIds", SONG_FIELDS);
 
     if (!playlist) return res.status(404).json({ error: "Playlist not found" });
     res.json(playlist);
@@ -128,7 +129,7 @@ router.delete("/:id/songs", async (req, res) => {
       req.params.id,
       { $pullAll: { songIds } },
       { new: true }
-    ).populate("songIds", "title artist album duration coverArt fileUrl");
+    ).populate("songIds", SONG_FIELDS);
 
     if (!playlist) return res.status(404).json({ error: "Playlist not found" });
     res.json(playlist);

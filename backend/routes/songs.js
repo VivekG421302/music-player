@@ -4,17 +4,19 @@
  * GET  /songs           — Paginated list of all songs
  * GET  /songs/:id       — Single song by ID
  * POST /songs/:id/play  — Increment play count (for "Recently Played" tracking)
- * DELETE /songs/:id     — Delete a song and its file
+ * DELETE /songs/:id     — Delete a song record
  */
 
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
-
 const Song = require("../models/Song");
 const Album = require("../models/Album");
 
 const router = express.Router();
+const ALLOWED_SORT_FIELDS = new Set(["createdAt", "title", "artist", "album", "playCount"]);
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /* ─────────────────── GET /songs (paginated) ───────────────── */
 router.get("/", async (req, res) => {
@@ -25,18 +27,20 @@ router.get("/", async (req, res) => {
 
     // Optional filters
     const filter = {};
-    if (req.query.artist) filter.artist = new RegExp(req.query.artist, "i");
-    if (req.query.album) filter.album = new RegExp(req.query.album, "i");
+    if (req.query.artist) filter.artist = new RegExp(escapeRegex(req.query.artist), "i");
+    if (req.query.album) filter.album = new RegExp(escapeRegex(req.query.album), "i");
     if (req.query.search) {
+      const search = new RegExp(escapeRegex(req.query.search), "i");
       filter.$or = [
-        { title: new RegExp(req.query.search, "i") },
-        { artist: new RegExp(req.query.search, "i") },
-        { album: new RegExp(req.query.search, "i") },
+        { title: search },
+        { artist: search },
+        { album: search },
       ];
     }
 
     // Sort options: createdAt (default), title, artist, playCount
-    const sortField = req.query.sort || "createdAt";
+    const requestedSort = req.query.sort || "createdAt";
+    const sortField = ALLOWED_SORT_FIELDS.has(requestedSort) ? requestedSort : "createdAt";
     const sortDir = req.query.order === "asc" ? 1 : -1;
 
     const [songs, total] = await Promise.all([
@@ -56,6 +60,7 @@ router.get("/", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("[SONGS] GET /songs failed:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -93,14 +98,6 @@ router.delete("/:id", async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
     if (!song) return res.status(404).json({ error: "Song not found" });
-
-    // Remove the physical file from disk
-    const filePath = path.join(__dirname, "../", song.fileUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlink(filePath, (err) => {
-        if (err) console.warn("[DELETE] Could not remove file:", err.message);
-      });
-    }
 
     // Remove song reference from its album
     await Album.updateMany({ songIds: song._id }, { $pull: { songIds: song._id } });

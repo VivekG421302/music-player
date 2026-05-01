@@ -5,7 +5,8 @@
  *  title       — Track name (extracted from ID3 tags or filename)
  *  artist      — Artist name (used for auto-album grouping)
  *  album       — Auto-assigned by backend based on artist string
- *  fileUrl     — Relative URL path to the stored audio file
+ *  telegramFileId   — Telegram audio file_id used for playback
+ *  telegramFilePath — Optional cached Telegram file_path from getFile
  *  duration    — Duration in seconds (extracted via music-metadata)
  *  coverArt    — Base64 data URL or URL string for album art
  *  mimeType    — MIME type of the uploaded file (e.g. audio/mpeg)
@@ -33,9 +34,13 @@ const songSchema = new mongoose.Schema(
       default: "Unknown Album",
       trim: true,
     },
-    fileUrl: {
+    telegramFileId: {
       type: String,
       required: true,
+    },
+    telegramFilePath: {
+      type: String,
+      default: null,
     },
     duration: {
       type: Number,  // seconds
@@ -67,5 +72,6 @@ const songSchema = new mongoose.Schema(
 songSchema.index({ artist: 1 });
 songSchema.index({ album: 1 });
 songSchema.index({ createdAt: -1 });
+songSchema.index({ telegramFileId: 1 });
 
 module.exports = mongoose.model("Song", songSchema);

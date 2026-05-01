@@ -1,42 +1,43 @@
 /**
- * routes/upload.js — File Upload Route
+ * routes/upload.js — Telegram-Based Upload Route
  *
  * POST /upload
- *  - Accepts multiple audio files via multipart/form-data (field: "files")
- *  - Extracts metadata (title, artist, duration, coverArt) via music-metadata
+ *  - Accepts multiple audio files (multipart/form-data, field: "files")
+ *  - Extracts metadata using music-metadata (from buffer)
+ *  - Uploads audio to Telegram (stores file_id)
  *  - Creates Song documents in MongoDB
- *  - Triggers Auto-Album Creation: groups songs by artist string
+ *  - Auto-creates Albums grouped by artist
  *
- * Storage: ./uploads/ directory (swap for Telegram/S3 by replacing diskStorage)
+ * ⚠️ No local file storage anymore
  */
 
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
-const { v4: uuidv4 } = require("uuid");
 const mm = require("music-metadata");
 
 const Song = require("../models/Song");
 const Album = require("../models/Album");
+const { assertTelegramUploadConfig } = require("../config/telegram");
 
 const router = express.Router();
 
-/* ─────────────────── Multer Storage Config ────────────────── */
-const uploadsDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    // Unique filename: uuid + original extension
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
+/* ─────────────────── MULTER (MEMORY) ─────────────────── */
+const storage = multer.memoryStorage();
 
 const fileFilter = (_req, file, cb) => {
-  const allowed = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/flac", "audio/aac", "audio/x-m4a"];
+  const allowed = [
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/ogg",
+    "audio/flac",
+    "audio/x-flac",
+    "audio/aac",
+    "audio/mp4",
+    "audio/x-m4a",
+  ];
+
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -47,19 +48,44 @@ const fileFilter = (_req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB (Telegram limit)
 });
 
-/* ──────────────────── Auto-Album Logic ────────────────────── */
-/**
- * Finds or creates an Album document for a given artist.
- * Normalizes the artist string to lowercase for deduplication.
- * Adds the new songId to the album's songIds array.
- *
- * @param {string} artist — Raw artist name from metadata
- * @param {string} songId — MongoDB ObjectId of the uploaded song
- * @param {string|null} coverArt — Cover art to set if album is new
- */
+/* ─────────────────── TELEGRAM UPLOAD ─────────────────── */
+async function uploadToTelegram(buffer, filename, mimeType) {
+  const { botToken, chatId } = assertTelegramUploadConfig();
+
+  const formData = new FormData();
+
+  formData.append("chat_id", chatId);
+  formData.append(
+    "audio",
+    new Blob([buffer], { type: mimeType }),
+    filename
+  );
+
+  const res = await fetch(
+    `https://api.telegram.org/bot${botToken}/sendAudio`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await res.json();
+
+  if (!data.ok || !data.result?.audio?.file_id) {
+    console.error("Telegram error:", data);
+    throw new Error(data.description || "Telegram upload failed");
+  }
+
+  return {
+    fileId: data.result.audio.file_id,
+    filePath: data.result.audio.file_path || null, // optional
+  };
+}
+
+/* ─────────────────── AUTO-ALBUM LOGIC ─────────────────── */
 async function assignToAlbum(artist, songId, coverArt) {
   const artistKey = artist.toLowerCase().trim();
   const albumName = `${artist}`;
@@ -67,7 +93,6 @@ async function assignToAlbum(artist, songId, coverArt) {
   let album = await Album.findOne({ artistKey });
 
   if (!album) {
-    // Create a new album for this artist
     album = new Album({
       name: albumName,
       artist,
@@ -76,23 +101,21 @@ async function assignToAlbum(artist, songId, coverArt) {
       coverArt: coverArt || null,
     });
   } else {
-    // Add song to existing album; set cover if not already present
     if (!album.coverArt && coverArt) album.coverArt = coverArt;
-    album.songIds.push(songId);
+    if (!album.songIds.some((id) => id.toString() === songId.toString())) {
+      album.songIds.push(songId);
+    }
   }
 
   await album.save();
   return album;
 }
 
-/* ──────────────────── Extract Cover Art ───────────────────── */
-/**
- * Converts the first picture in ID3 tags to a base64 data URL.
- * Returns null if no picture is present.
- */
+/* ─────────────────── COVER ART EXTRACT ─────────────────── */
 function extractCoverArt(metadata) {
   const picture = metadata.common?.picture?.[0];
   if (!picture) return null;
+
   const base64 = Buffer.from(picture.data).toString("base64");
   return `data:${picture.format};base64,${base64}`;
 }
@@ -104,30 +127,46 @@ router.post("/", upload.array("files", 20), async (req, res) => {
   }
 
   const results = [];
-  const errors = [];
+  const statuses = req.files.map((file) => ({
+    file: file.originalname,
+    status: "pending",
+  }));
 
-  for (const file of req.files) {
+  for (const [index, file] of req.files.entries()) {
     try {
-      // Parse ID3 / metadata tags from the saved file
-      const metadata = await mm.parseFile(file.path);
+      statuses[index].status = "uploading";
+
+      /* 1. Extract metadata from buffer */
+      const metadata = await mm.parseBuffer(
+        file.buffer,
+        file.mimetype
+      );
+
       const { title, artist, album: albumTag, duration } = metadata.common;
 
-      // Build the relative URL that the frontend will use to stream the file
-      const fileUrl = `/uploads/${file.filename}`;
-
-      // Extract embedded cover art (if any)
+      /* 2. Extract cover art */
       const coverArt = extractCoverArt(metadata);
 
-      // Determine display values, falling back to filename
-      const songTitle = title || path.parse(file.originalname).name;
+      /* 3. Normalize values */
+      const songTitle =
+        title || path.parse(file.originalname).name;
+
       const songArtist = artist || "Unknown Artist";
 
-      // Create the Song document
+      /* 4. Upload to Telegram */
+      const { fileId, filePath } = await uploadToTelegram(
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      );
+
+      /* 5. Save Song in DB */
       const song = new Song({
         title: songTitle,
         artist: songArtist,
-        album: albumTag || `${songArtist}`,  // will be overridden by auto-album
-        fileUrl,
+        album: albumTag || `${songArtist}`,
+        telegramFileId: fileId,
+        telegramFilePath: filePath,
         duration: Math.round(duration || 0),
         coverArt,
         mimeType: file.mimetype,
@@ -136,27 +175,41 @@ router.post("/", upload.array("files", 20), async (req, res) => {
 
       await song.save();
 
-      // Auto-Album: group by artist string
-      const autoAlbum = await assignToAlbum(songArtist, song._id, coverArt);
+      /* 6. Auto-Album */
+      const autoAlbum = await assignToAlbum(
+        songArtist,
+        song._id,
+        coverArt
+      );
 
-      // Update song's album field to reflect the auto-assigned album
       song.album = autoAlbum.name;
       await song.save();
 
       results.push(song);
+      statuses[index] = {
+        file: file.originalname,
+        status: "done",
+        songId: song._id,
+      };
     } catch (err) {
-      console.error(`[UPLOAD] Error processing ${file.originalname}:`, err.message);
-      errors.push({ file: file.originalname, error: err.message });
+      console.error(
+        `[UPLOAD ERROR] ${file.originalname}:`,
+        err.message
+      );
 
-      // Clean up the file if song creation failed
-      fs.unlink(file.path, () => {});
+      statuses[index] = {
+        file: file.originalname,
+        status: "error",
+        error: err.message,
+      };
     }
   }
 
   res.status(201).json({
     uploaded: results.length,
     songs: results,
-    errors,
+    statuses,
+    errors: statuses.filter((item) => item.status === "error"),
   });
 });
 

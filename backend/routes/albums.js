@@ -11,12 +11,13 @@ const express = require("express");
 const Album = require("../models/Album");
 
 const router = express.Router();
+const SONG_FIELDS = "title artist duration coverArt telegramFileId telegramFilePath mimeType";
 
 /* ─────────────── GET /albums ───────────────────────────────── */
 router.get("/", async (_req, res) => {
   try {
     const albums = await Album.find()
-      .populate("songIds", "title artist duration coverArt fileUrl")
+      .populate("songIds", SONG_FIELDS)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -30,7 +31,7 @@ router.get("/", async (_req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const album = await Album.findById(req.params.id)
-      .populate("songIds", "title artist duration coverArt fileUrl mimeType")
+      .populate("songIds", SONG_FIELDS)
       .lean();
 
     if (!album) return res.status(404).json({ error: "Album not found" });

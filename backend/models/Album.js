@@ -50,6 +50,4 @@ const albumSchema = new mongoose.Schema(
   }
 );
 
-albumSchema.index({ artistKey: 1 });
-
 module.exports = mongoose.model("Album", albumSchema);

@@ -3,55 +3,79 @@
  * Personal Music Player Suite Backend
  */
 
-require("dotenv").config();
+const path = require("path");
+const envPath = path.join(__dirname, ".env");
+const dotenvResult = require("dotenv").config({ path: envPath, override: true });
+
+if (dotenvResult.error) {
+  console.warn(`[ENV] Could not load ${envPath}: ${dotenvResult.error.message}`);
+}
 
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require("path");
+const connectDB = require("./config/db");
+const { logTelegramConfigStatus } = require("./config/telegram");
 
 const songRoutes = require("./routes/songs");
 const playlistRoutes = require("./routes/playlists");
 const albumRoutes = require("./routes/albums");
 const uploadRoutes = require("./routes/upload");
+const telegramRoutes = require("./routes/telegram");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 /* ─────────────────────────── CORS ─────────────────────────── */
-const allowedOrigins = [
-  process.env.CORS_ORIGIN,
-  "http://localhost:5173",
-  "http://localhost:3000",
-].filter(Boolean);
+const configuredOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS policy: origin ${origin} not allowed`));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  ...configuredOrigins,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+];
+
+const isAllowedDevOrigin = (origin) =>
+  /^http:\/\/(localhost|127\.0\.0\.1):517\d$/.test(origin);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 /* ─────────────────────── Body Parsers ─────────────────────── */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-/* ──────────────── Static Files (Uploaded Audio) ───────────── */
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 /* ──────────────────────── API Routes ──────────────────────── */
-app.use("/songs", songRoutes);
-app.use("/upload", uploadRoutes);
-app.use("/playlists", playlistRoutes);
-app.use("/albums", albumRoutes);
+function requireDatabase(_req, res, next) {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: "Database unavailable" });
+  }
+
+  next();
+}
+
+app.use("/songs", requireDatabase, songRoutes);
+app.use("/upload", requireDatabase, uploadRoutes);
+app.use("/playlists", requireDatabase, playlistRoutes);
+app.use("/albums", requireDatabase, albumRoutes);
+app.use("/api/telegram", requireDatabase, telegramRoutes);
 
 /* ──────────────────────── Health Check ────────────────────── */
 app.get("/health", (_req, res) => {
@@ -73,19 +97,14 @@ app.use((err, _req, res, _next) => {
 });
 
 /* ──────────────────── Start Server & MongoDB ───────────────────── */
-// FIX: Using process.env directly to avoid duplicate 'const' declarations
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[SERVER] Running on port ${PORT}`);
-  
-  const dbUri = process.env.MONGODB_URI || "mongodb://localhost:27017/musicplayer";
-
-  mongoose
-    .connect(dbUri)
-    .then(() => {
-      console.log("[DB] Connected to MongoDB");
-    })
-    .catch((err) => {
-      console.error("[DB] Connection error:", err.message);
-   
+connectDB()
+  .then(() => {
+    logTelegramConfigStatus();
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[SERVER] Running on port ${PORT}`);
     });
-});
+  })
+  .catch((err) => {
+    console.error("[DB] Startup connection failed:", err.message);
+    process.exit(1);
+  });
