@@ -56,7 +56,7 @@ export default function Songs() {
 
         {/* Search */}
         <div className="songs-search-wrap">
-          <span className="search-icon">🔍</span>
+          <span className="search-icon"></span>
           <input
             type="search"
             className="form-input songs-search"
