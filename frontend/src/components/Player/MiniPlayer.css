@@ -1,5 +1,4 @@
 /* src/components/Player/MiniPlayer.css */
-
 .mini-player {
   position: fixed;
   bottom: 0;
@@ -18,6 +17,9 @@
 .mini-player-seek {
   height: 4px;
   position: relative;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
 }
 
 .mini-seek-bar {
@@ -25,10 +27,13 @@
   appearance: none;
   width: 100%;
   height: 4px;
+  margin: 0;
+  padding: 0;
+  display: block;
+  border: none;
   border-radius: 0;
   cursor: pointer;
   outline: none;
-  transition: height var(--transition-fast);
 }
 
 .mini-seek-bar:hover {
