@@ -42,16 +42,34 @@ const allowedOrigins = [
 const isAllowedDevOrigin = (origin) =>
   /^http:\/\/(localhost|127\.0\.0\.1):517\d$/.test(origin);
 
+// const corsOptions = {
+//   origin: (origin, callback) => {
+//     if (!origin || allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(null, false);
+//     }
+//   },
+//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+//   credentials: true,
+// };
+
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, false);
+    // Allow non-browser requests (like curl, mobile apps)
+    if (!origin) return callback(null, true);
+
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+    const isVercel = /^https:\/\/.*\.vercel\.app$/.test(origin);
+    const isAllowed = allowedOrigins.includes(origin);
+
+    if (isLocalhost || isVercel || isAllowed) {
+      return callback(null, true);
     }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
 
