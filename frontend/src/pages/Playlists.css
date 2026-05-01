@@ -6,7 +6,86 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
   margin-bottom: var(--spacing-xl);
+}
+
+.playlists-header-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.upload-queue {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.upload-queue-header,
+.upload-queue-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.upload-queue-header {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.upload-queue-row {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.upload-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.upload-file-status {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.upload-queue-row.done .upload-file-status {
+  color: #4ade80;
+}
+
+.upload-queue-row.error .upload-file-status,
+.upload-file-error {
+  color: #f87171;
+}
+
+.upload-file-track {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--bg-overlay);
+}
+
+.upload-file-track span {
+  display: block;
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 180ms ease;
+}
+
+.upload-file-error {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
 }
 
 /* ─── Grid ───────────────────────────────────────────── */
@@ -181,8 +260,43 @@
 
 /* ─── Responsive ─────────────────────────────────────── */
 @media (max-width: 600px) {
+  .playlists-header {
+    align-items: stretch;
+  }
+
+  .playlists-header-actions,
+  .playlists-header-actions .btn {
+    width: 100%;
+  }
+
+  .playlists-header-actions .btn {
+    justify-content: center;
+  }
+
   .playlist-detail-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .playlist-detail-cover {
+    width: min(160px, 45vw);
+    height: min(160px, 45vw);
+  }
+
+  .playlist-detail-actions {
+    width: 100%;
+  }
+
+  .playlist-detail-actions .btn {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+
+  .modal {
+    padding: var(--spacing-lg);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
   }
 }

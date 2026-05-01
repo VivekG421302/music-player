@@ -88,7 +88,15 @@ export default function Home() {
           <div className="empty-state">
             <span className="empty-state-icon">🎵</span>
             <h3>No songs yet</h3>
-            <p>Upload your music from the Playlists page</p>
+            <p>Upload your music or create a playlist to get started.</p>
+            <div className="empty-state-actions">
+              <button className="btn btn-primary" onClick={() => navigate("/playlists")}>
+                Upload Song
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate("/playlists")}>
+                Create Playlist
+              </button>
+            </div>
           </div>
         )}
 

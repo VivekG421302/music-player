@@ -53,3 +53,11 @@
   font-size: 0.85rem;
   margin-bottom: var(--spacing-md);
 }
+
+@media (max-width: 600px) {
+  .songs-header,
+  .songs-search-wrap,
+  .songs-search {
+    width: 100%;
+  }
+}

@@ -25,6 +25,7 @@ export default function Playlists() {
   const [activePlaylist, setActivePlaylist] = useState(null);
   const [loading, setLoading]             = useState(true);
   const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadQueue, setUploadQueue]     = useState([]);
 
   // Modal states
   const [showCreate, setShowCreate]       = useState(false);
@@ -125,7 +126,10 @@ export default function Playlists() {
 
     setUploadProgress(0);
     try {
-      const result = await api.upload.uploadFiles(files, setUploadProgress);
+      const result = await api.upload.uploadFiles(files, {
+        onOverallProgress: setUploadProgress,
+        onFileUpdate: setUploadQueue,
+      });
       // Add newly uploaded songs to the active playlist
       if (activePlaylist && result.songs?.length > 0) {
         const songIds = result.songs.map((s) => s._id);
@@ -140,6 +144,7 @@ export default function Playlists() {
       alert(`Upload failed: ${err.message}`);
     } finally {
       setUploadProgress(null);
+      setTimeout(() => setUploadQueue([]), 2500);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -150,10 +155,42 @@ export default function Playlists() {
       {/* Header */}
       <div className="playlists-header">
         <h1>Playlists</h1>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + New Playlist
-        </button>
+        <div className="playlists-header-actions">
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+            Upload Song
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            New Playlist
+          </button>
+        </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="audio/*"
+          multiple
+          className="sr-only"
+          onChange={handleUpload}
+        />
       </div>
+
+      {uploadQueue.length > 0 && (
+        <div className="upload-queue">
+          <div className="upload-queue-header">
+            <span>Upload queue</span>
+            {uploadProgress !== null && <span>{uploadProgress}%</span>}
+          </div>
+          {uploadQueue.map((item) => (
+            <div key={item.file} className={`upload-queue-row ${item.status}`}>
+              <span className="upload-file-name">{item.file}</span>
+              <span className="upload-file-status">{item.status}</span>
+              <div className="upload-file-track">
+                <span style={{ width: `${item.progress || 0}%` }} />
+              </div>
+              {item.error && <span className="upload-file-error">{item.error}</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="loading-screen"><div className="spinner" /></div>
@@ -167,6 +204,14 @@ export default function Playlists() {
               <span className="empty-state-icon">🎶</span>
               <h3>No playlists yet</h3>
               <p>Create your first playlist to organise your music.</p>
+              <div className="empty-state-actions">
+                <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                  Create Playlist
+                </button>
+                <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                  Upload Song
+                </button>
+              </div>
             </div>
           )}
           <div className="playlists-grid">
@@ -238,14 +283,6 @@ export default function Playlists() {
                 >
                   ↑ Upload
                 </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="audio/*"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={handleUpload}
-                />
               </div>
 
               {/* Upload progress */}

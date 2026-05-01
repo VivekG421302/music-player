@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAudio } from "../context/AudioContext";
 import SongRow from "../components/UI/SongRow";
 import usePaginatedSongs from "../hooks/usePaginatedSongs";
@@ -22,6 +23,7 @@ const TABS = [
 ];
 
 export default function Songs() {
+  const navigate = useNavigate();
   const { recents } = useAudio();
   const [activeTab, setActiveTab] = useState("recent");
   const [search, setSearch] = useState("");
@@ -40,7 +42,8 @@ export default function Songs() {
       : { sort: "createdAt", order: "desc", search: debouncedSearch };
 
   const { songs, loading, sentinelRef, error } = usePaginatedSongs(
-    activeTab === "played" ? {} : queryParams
+    queryParams,
+    { enabled: activeTab !== "played" }
   );
 
   // Displayed list
@@ -93,6 +96,16 @@ export default function Songs() {
               ? "Nothing played yet — hit play!"
               : "No songs found. Try uploading some music."}
           </p>
+          {activeTab !== "played" && (
+            <div className="empty-state-actions">
+              <button className="btn btn-primary" onClick={() => navigate("/playlists")}>
+                Upload Song
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate("/playlists")}>
+                Create Playlist
+              </button>
+            </div>
+          )}
         </div>
       )}
 

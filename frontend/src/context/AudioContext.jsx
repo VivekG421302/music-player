@@ -59,27 +59,25 @@ function saveRecent(song) {
   localStorage.setItem(RECENTS_KEY, JSON.stringify(recents.slice(0, MAX_RECENTS)));
 }
 
-/* ─────────────────── BLOB CACHE ────────────────────────────
-   Caches audio blobs in sessionStorage to avoid re-downloading.
-   Falls back to direct URL if the blob is too large.
+/* ─────────────────── TELEGRAM URL CACHE ─────────────────────
+   Caches resolved stream URLs to avoid repeated backend getFile calls.
 ──────────────────────────────────────────────────────────── */
-const blobCache = {}; // { [songId]: objectURL }
+const audioUrlCache = {}; // { [telegramFileId]: url }
 
 async function getCachedUrl(song, baseUrl) {
-  if (blobCache[song._id]) return blobCache[song._id];
+  if (song.telegramFileId) {
+    if (audioUrlCache[song.telegramFileId]) return audioUrlCache[song.telegramFileId];
 
-  const fullUrl = `${baseUrl}${song.fileUrl}`;
-
-  try {
-    const response = await fetch(fullUrl);
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    blobCache[song._id] = objectUrl;
-    return objectUrl;
-  } catch (_) {
-    // If fetching the blob fails, use the direct URL
-    return fullUrl;
+    const { url } = await api.songs.getAudioUrl(song.telegramFileId);
+    audioUrlCache[song.telegramFileId] = url;
+    return url;
   }
+
+  if (song.fileUrl) {
+    return `${baseUrl}${song.fileUrl}`;
+  }
+
+  throw new Error("Song has no playable audio source");
 }
 
 /* ─────────────────── PROVIDER ──────────────────────────────*/
@@ -161,9 +159,14 @@ export function AudioProvider({ children }) {
       setCurrentSong(song);
       setProgress(0);
 
-      const url = await getCachedUrl(song, BASE_URL);
-      audio.src = url;
-      audio.play().catch((e) => console.warn("[Audio] Play failed:", e));
+      try {
+        const url = await getCachedUrl(song, BASE_URL);
+        audio.src = url;
+        audio.play().catch((e) => console.warn("[Audio] Play failed:", e));
+      } catch (e) {
+        console.warn("[Audio] Could not resolve audio URL:", e);
+        return;
+      }
 
       // Record play
       saveRecent(song);
@@ -197,9 +200,14 @@ export function AudioProvider({ children }) {
       setCurrentSong(song);
       setProgress(0);
 
-      const url = await getCachedUrl(song, BASE_URL);
-      audio.src = url;
-      audio.play().catch((e) => console.warn("[Audio] Play failed:", e));
+      try {
+        const url = await getCachedUrl(song, BASE_URL);
+        audio.src = url;
+        audio.play().catch((e) => console.warn("[Audio] Play failed:", e));
+      } catch (e) {
+        console.warn("[Audio] Could not resolve audio URL:", e);
+        return;
+      }
 
       saveRecent(song);
       setRecents(loadRecents());

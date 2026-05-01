@@ -158,14 +158,34 @@
 @media (max-width: 768px) {
   .mini-player {
     left: 0;
-    bottom: 60px; /* above mobile tab bar */
+    bottom: var(--mobile-nav-height);
     height: 60px;
   }
 
   .mini-player-body {
+    grid-template-columns: minmax(0, 1fr) auto auto;
     padding: 0 var(--spacing-md);
     gap: var(--spacing-sm);
   }
 
   .mini-time { display: none; }
+
+  .mini-cover {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mini-controls .btn-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mini-play-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mini-right {
+    gap: 0;
+  }
 }

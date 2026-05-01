@@ -358,3 +358,38 @@
     max-height: none;
   }
 }
+
+@media (max-width: 480px) {
+  .player-main {
+    gap: var(--spacing-lg);
+  }
+
+  .vinyl-wrapper,
+  .vinyl-disc {
+    width: min(220px, 72vw);
+    height: min(220px, 72vw);
+  }
+
+  .tonearm {
+    right: -12px;
+    transform: scale(0.85) rotate(-20deg);
+  }
+
+  .tonearm.playing {
+    transform: scale(0.85) rotate(0deg);
+  }
+
+  .player-controls {
+    gap: var(--spacing-md);
+  }
+
+  .player-progress,
+  .player-volume {
+    max-width: 100%;
+  }
+
+  .player-sub-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

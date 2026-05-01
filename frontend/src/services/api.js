@@ -14,13 +14,14 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 /* ─────────────────── Internal fetch helper ─────────────────── */
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isFormData = options.body instanceof FormData;
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      // Don't set Content-Type for FormData (browser handles multipart boundary)
-      ...(options.body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
+      // Keep GET requests simple, and let the browser set multipart boundaries.
+      ...(hasBody && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...options.headers,
     },
   });
@@ -58,6 +59,11 @@ const songs = {
     return request(`/songs/${id}/play`, { method: "POST" });
   },
 
+  /** Resolve a Telegram file_id to a streamable audio URL */
+  getAudioUrl(fileId) {
+    return request(`/api/telegram/${encodeURIComponent(fileId)}`);
+  },
+
   /** Delete a song */
   delete(id) {
     return request(`/songs/${id}`, { method: "DELETE" });
@@ -71,31 +77,84 @@ const upload = {
    * @param {FileList|File[]} files
    * @param {function} onProgress — optional progress callback (0-100)
    */
-  uploadFiles(files, onProgress) {
-    return new Promise((resolve, reject) => {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => formData.append("files", file));
+  async uploadFiles(files, callbacks = {}) {
+    const fileList = Array.from(files);
+    const onProgress =
+      typeof callbacks === "function" ? callbacks : callbacks.onOverallProgress;
+    const onFileUpdate =
+      typeof callbacks === "function" ? null : callbacks.onFileUpdate;
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${BASE_URL}/upload`);
+    const songs = [];
+    const statuses = fileList.map((file) => ({
+      file: file.name,
+      status: "pending",
+      progress: 0,
+    }));
 
+    const notify = (index, patch) => {
+      statuses[index] = { ...statuses[index], ...patch };
+      onFileUpdate?.([...statuses]);
       if (onProgress) {
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-        });
+        const total = statuses.reduce((sum, item) => sum + (item.progress || 0), 0);
+        onProgress(Math.round(total / Math.max(statuses.length, 1)));
       }
+    };
 
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(JSON.parse(xhr.responseText));
+    onFileUpdate?.([...statuses]);
+
+    for (const [index, file] of fileList.entries()) {
+      notify(index, { status: "uploading", progress: 0 });
+      try {
+        const result = await new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append("files", file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${BASE_URL}/upload`);
+
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            notify(index, {
+              progress: Math.min(95, Math.round((e.loaded / e.total) * 95)),
+            });
+          }
+        });
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            let message = `Upload failed: ${xhr.status}`;
+            try {
+              const errBody = JSON.parse(xhr.responseText);
+              message = errBody.error || message;
+            } catch (_) {}
+            reject(new Error(message));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.send(formData);
+        });
+
+        const serverStatus = result.statuses?.[0];
+        if (serverStatus?.status === "error") {
+          notify(index, { status: "error", progress: 100, error: serverStatus.error });
         } else {
-          reject(new Error(`Upload failed: ${xhr.status}`));
+          songs.push(...(result.songs || []));
+          notify(index, { status: "done", progress: 100, songId: result.songs?.[0]?._id });
         }
-      };
+      } catch (err) {
+        notify(index, { status: "error", progress: 100, error: err.message });
+      }
+    }
 
-      xhr.onerror = () => reject(new Error("Network error during upload"));
-      xhr.send(formData);
-    });
+    return {
+      uploaded: songs.length,
+      songs,
+      statuses,
+      errors: statuses.filter((item) => item.status === "error"),
+    };
   },
 };
 
