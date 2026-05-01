@@ -13,6 +13,16 @@ import React, { useCallback } from "react";
 import { useAudio, PLAY_MODES } from "../context/AudioContext";
 import SongRow from "../components/UI/SongRow";
 import "./Player.css";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Volume1,
+  Volume2
+} from "lucide-react";
 
 function formatTime(secs) {
   if (!secs || isNaN(secs)) return "0:00";
@@ -121,39 +131,39 @@ export default function Player() {
           </div>
 
           {/* Main Controls */}
-          <div className="player-controls">
-            <button
-              className={`mode-btn ${playMode === PLAY_MODES.SHUFFLE ? "active" : ""}`}
-              onClick={() => setPlayMode(PLAY_MODES.SHUFFLE)}
-              title="Shuffle"
-            >
-              ⇌
-            </button>
+        <div className="player-controls">
+          <button
+            className={`mode-btn ${playMode === PLAY_MODES.SHUFFLE ? "active" : ""}`}
+            onClick={() => setPlayMode(PLAY_MODES.SHUFFLE)}
+            title="Shuffle"
+          >
+            <Shuffle size={18} />
+          </button>
 
-            <button className="ctrl-btn" onClick={prevSong} title="Previous">
-              ⏮
-            </button>
+          <button className="ctrl-btn" onClick={prevSong} title="Previous">
+            <SkipBack size={22} />
+          </button>
 
-            <button
-              className="play-pause-btn"
-              onClick={togglePlay}
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? "⏸" : "▶"}
-            </button>
+          <button
+            className="play-pause-btn"
+            onClick={togglePlay}
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause size={28} /> : <Play size={28} />}
+          </button>
 
-            <button className="ctrl-btn" onClick={nextSong} title="Next">
-              ⏭
-            </button>
+          <button className="ctrl-btn" onClick={nextSong} title="Next">
+            <SkipForward size={22} />
+          </button>
 
-            <button
-              className={`mode-btn ${playMode === PLAY_MODES.REPEAT ? "active" : ""}`}
-              onClick={() => setPlayMode(PLAY_MODES.REPEAT)}
-              title="Repeat one"
-            >
-              ⟳
-            </button>
-          </div>
+          <button
+            className={`mode-btn ${playMode === PLAY_MODES.REPEAT ? "active" : ""}`}
+            onClick={() => setPlayMode(PLAY_MODES.REPEAT)}
+            title="Repeat one"
+          >
+            <Repeat size={18} />
+          </button>
+        </div>
 
           {/* Sub mode row: Sequence & Revolve */}
           <div className="player-sub-controls">
@@ -173,7 +183,10 @@ export default function Player() {
 
           {/* Volume */}
           <div className="player-volume">
-            <span className="vol-icon">🔈</span>
+            <span className="vol-icon">
+              <Volume1 size={16} />
+            </span>
+
             <input
               type="range"
               className="progress-bar"
@@ -186,7 +199,10 @@ export default function Player() {
                 background: `linear-gradient(to right, var(--primary-color) ${volume * 100}%, var(--bg-overlay) ${volume * 100}%)`,
               }}
             />
-            <span className="vol-icon">🔊</span>
+
+            <span className="vol-icon">
+              <Volume2 size={16} />
+            </span>
           </div>
         </div>
 

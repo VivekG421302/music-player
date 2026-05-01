@@ -8,6 +8,17 @@
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAudio, PLAY_MODES } from "../../context/AudioContext";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  ListMusic
+} from "lucide-react";
+
 import "./MiniPlayer.css";
 
 function formatTime(secs) {
@@ -43,12 +54,18 @@ export default function MiniPlayer() {
     setPlayMode(next);
   };
 
-  const modeIcon = {
-    [PLAY_MODES.SEQUENCE]: "→",
-    [PLAY_MODES.SHUFFLE]:  "⇌",
-    [PLAY_MODES.REVOLVE]:  "↻",
-    [PLAY_MODES.REPEAT]:   "⟳",
-  }[playMode];
+  const renderModeIcon = () => {
+    switch (playMode) {
+      case PLAY_MODES.SHUFFLE:
+        return <Shuffle size={16} />;
+      case PLAY_MODES.REPEAT:
+        return <Repeat1 size={16} />;
+      case PLAY_MODES.REVOLVE:
+        return <Repeat size={16} />;
+      default:
+        return <ListMusic size={16} />;
+    }
+  };
 
   if (!currentSong) return null;
 
@@ -56,7 +73,7 @@ export default function MiniPlayer() {
 
   return (
     <div className="mini-player">
-      {/* Seek bar across full top edge */}
+      {/* Seek bar */}
       <div className="mini-player-seek">
         <input
           type="range"
@@ -73,7 +90,7 @@ export default function MiniPlayer() {
       </div>
 
       <div className="mini-player-body">
-        {/* Left: Song info */}
+        {/* Left */}
         <div
           className="mini-song-info"
           onClick={() => navigate("/player")}
@@ -86,36 +103,46 @@ export default function MiniPlayer() {
               <span className="cover-art-placeholder">♪</span>
             )}
           </div>
+
           <div className="mini-meta">
             <span className="mini-title">{currentSong.title}</span>
             <span className="mini-artist">{currentSong.artist}</span>
           </div>
         </div>
 
-        {/* Center: Controls */}
+        {/* Center */}
         <div className="mini-controls">
           <button className="btn-icon" onClick={prevSong} title="Previous">
-            ⏮
+            <SkipBack size={18} />
           </button>
-          <button className="mini-play-btn" onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
-            {isPlaying ? "⏸" : "▶"}
+
+          <button
+            className="mini-play-btn"
+            onClick={togglePlay}
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
           </button>
+
           <button className="btn-icon" onClick={nextSong} title="Next">
-            ⏭
+            <SkipForward size={18} />
           </button>
         </div>
 
-        {/* Right: Time + mode */}
+        {/* Right */}
         <div className="mini-right">
           <span className="mini-time">
             {formatTime(progress)} / {formatTime(duration)}
           </span>
+
           <button
-            className={`btn-icon mini-mode-btn ${playMode !== PLAY_MODES.SEQUENCE ? "active" : ""}`}
+            className={`btn-icon mini-mode-btn ${
+              playMode !== PLAY_MODES.SEQUENCE ? "active" : ""
+            }`}
             onClick={cyclePlayMode}
             title={`Mode: ${playMode}`}
           >
-            {modeIcon}
+            {renderModeIcon()}
           </button>
         </div>
       </div>
