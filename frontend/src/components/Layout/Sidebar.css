@@ -92,10 +92,12 @@
   border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 
+/* ✅ FIXED ICON ALIGNMENT */
 .sidebar-icon {
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  text-align: center;
   flex-shrink: 0;
 }
 
@@ -147,9 +149,11 @@
     font-size: 0.65rem;
   }
 
-  .sidebar-link.active::before { display: none; }
+  .sidebar-link.active::before {
+    display: none;
+  }
 
   .sidebar-icon {
-    font-size: 1.2rem;
+    width: auto;
   }
 }
