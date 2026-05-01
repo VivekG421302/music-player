@@ -13,6 +13,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 
 import Sidebar from "./components/Layout/Sidebar";
 import MiniPlayer from "./components/Player/MiniPlayer";
+import { useLocation } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Songs from "./pages/Songs";
@@ -21,11 +22,16 @@ import Playlists from "./pages/Playlists";
 import Profile from "./pages/Profile";
 
 export default function App() {
+  const location = useLocation();
+
+  const hideMiniPlayer = location.pathname.startsWith("/player");
+
   return (
     <ThemeProvider>
       <AudioProvider>
         <div className="app-shell">
           <Sidebar />
+
           <main className="main-content">
             <Routes>
               <Route path="/" element={<Home />} />
@@ -33,12 +39,12 @@ export default function App() {
               <Route path="/player" element={<Player />} />
               <Route path="/playlists" element={<Playlists />} />
               <Route path="/profile" element={<Profile />} />
-              {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
-          {/* MiniPlayer sits fixed at the bottom, outside the scrollable main */}
-          <MiniPlayer />
+
+          {/* ✅ Conditionally render */}
+          {!hideMiniPlayer && <MiniPlayer />}
         </div>
       </AudioProvider>
     </ThemeProvider>
